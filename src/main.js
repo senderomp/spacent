@@ -1,14 +1,11 @@
 import Web3 from "web3"
 import { newKitFromWeb3 } from "@celo/contractkit"
 import BigNumber from "bignumber.js"
-import marketplaceAbi from "../contract/marketplace.abi.json"
+import marketplaceAbi from "../contract/spacerent.abi.json"
 import erc20Abi from "../contract/erc20.abi.json"
+import {MPContractAddress, emptyAddress, cUSDContractAddress, ERC20_DECIMALS} from "./utils/constants";
 
-const ERC20_DECIMALS = 18
-const MPContractAddress = "0xB3037018c26bdf76fD994b67c8b1A1E57813b48A"
-const cUSDContractAddress = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1"
 
-const emptyAddress = "0x0000000000000000000000000000000000000000"
 
 let kit
 let contract
@@ -44,23 +41,23 @@ const connectCeloWallet = async function () {
 async function approve(_price) {
   const cUSDContract = new kit.web3.eth.Contract(erc20Abi, cUSDContractAddress)
 
-  const result = await cUSDContract.methods
-    .approve(MPContractAddress, _price)
-    .send({ from: kit.defaultAccount })
-  return result
+  return await cUSDContract.methods
+      .approve(MPContractAddress, _price)
+      .send({from: kit.defaultAccount})
+
 }
 
 const getBalance = async function () {
   const totalBalance = await kit.getTotalBalance(kit.defaultAccount)
-  const cUSDBalance = totalBalance.cUSD.shiftedBy(-ERC20_DECIMALS).toFixed(2)
-  document.querySelector("#balance").textContent = cUSDBalance
+  document.querySelector("#balance").textContent = totalBalance.cUSD.shiftedBy(-ERC20_DECIMALS).toFixed(2)
+
 }
 
 const getSpaces = async function() {
   const _spacesLength = await contract.methods.getSpacesLength().call()
   const _spaces = []
   for (let i = 0; i < _spacesLength; i++) {
-    let _space = new Promise(async (resolve, reject) => {
+    let _space = new Promise(async (resolve) => {
       let s = await contract.methods.getSpace(i).call()
       resolve({
         index: i,
@@ -99,7 +96,7 @@ function productTemplate(_space) {
   <div class="card" style="width: 18rem;">
     <div class="card-body">
       <h5 class="card-title">${_space.name}</h5>
-      <h6 class="card-subtitle mb-2 text-muted">${ hoursList[_space.startIndex]} - ${ hoursList[_space.endIndex]}</h6>
+      <h6 class="card-subtitle mb-2 text-muted">${hoursList[_space.startIndex]} - ${hoursList[_space.endIndex]}</h6>
       <h6 class="card-subtitle mb-2 text-muted">${daysString}</h6>
       <a class="btn btn-outline-primary viewSlots" data-bs-toggle="modal" data-bs-target="#viewSlots" id="${_space.index}">View Slots</a>
     </div>
@@ -107,24 +104,24 @@ function productTemplate(_space) {
   `
 }
 
-function identiconTemplate(_address) {
-  const icon = blockies
-    .create({
-      seed: _address,
-      size: 8,
-      scale: 16,
-    })
-    .toDataURL()
-
-  return `
-  <div class="rounded-circle overflow-hidden d-inline-block border border-white border-2 shadow-sm m-0">
-    <a href="https://alfajores-blockscout.celo-testnet.org/address/${_address}/transactions"
-        target="_blank">
-        <img src="${icon}" width="48" alt="${_address}">
-    </a>
-  </div>
-  `
-}
+// function identiconTemplate(_address) {
+//   const icon = blockies
+//     .create({
+//       seed: _address,
+//       size: 8,
+//       scale: 16,
+//     })
+//     .toDataURL()
+//
+//   return `
+//   <div class="rounded-circle overflow-hidden d-inline-block border border-white border-2 shadow-sm m-0">
+//     <a href="https://alfajores-blockscout.celo-testnet.org/address/${_address}/transactions"
+//         target="_blank">
+//         <img src="${icon}" width="48" alt="${_address}">
+//     </a>
+//   </div>
+//   `
+// }
 
 function notification(_text) {
   document.querySelector(".alert").style.display = "block"
@@ -144,18 +141,18 @@ window.addEventListener("load", async () => {
 });
 
 document
-  .querySelector("#newSpaceBtn")
-  .addEventListener("click", async (e) => {
-    let days = []
-    let slots = []
-    for (let i = 1; i <= 7; i++){
-      const element = "btncheck" + i
-      const tmp = document.getElementById(element)
-      if (tmp.checked) {
-        days.push(i - 1)
+    .querySelector("#newSpaceBtn")
+    .addEventListener("click", async () => {
+      let days = []
+      let slots = []
+      for (let i = 1; i <= 7; i++) {
+        const element = "btncheck" + i
+        const tmp = document.getElementById(element)
+        if (tmp.checked) {
+          days.push(i - 1)
+        }
       }
-    }
-    const startH = document.getElementById("startHourSelect").value
+      const startH = document.getElementById("startHourSelect").value
     const endH = document.getElementById("endHourSelect").value
     const totalHours = endH - startH
 
@@ -185,9 +182,9 @@ document
     
     notification(`⌛ Adding "${params[0]}"...`)
     try {
-      const result = await contract.methods
-        .createSpace(...params)
-        .send({ from: kit.defaultAccount })
+      await contract.methods
+          .createSpace(...params)
+          .send({from: kit.defaultAccount})
     } catch (error) {
       notification(`⚠️ ${error}.`)
     }
@@ -283,9 +280,9 @@ document.querySelector("#slotsGrid").addEventListener("click", async (e) => {
     }
     notification(`⌛ Awaiting payment for "${spaces[spaceRef].name}"...`)
     try {
-      const result = await contract.methods
-        .reserveSlot(spaceRef, index)
-        .send({ from: kit.defaultAccount })
+      await contract.methods
+          .reserveSlot(spaceRef, index)
+          .send({from: kit.defaultAccount})
       notification(`🎉 You successfully reserved "${spaces[spaceRef].name}".`)
       getSpaces()
       getBalance()

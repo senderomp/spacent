@@ -123,7 +123,7 @@ contract Spacerent {
     function reserveSlot(uint256 _index, uint256 _Sindex) public payable {
         require(
             slots[_index].occupant ==
-                0x0000000000000000000000000000000000000000,
+            address(0),
             "Reserved Slot"
         );
         require(
